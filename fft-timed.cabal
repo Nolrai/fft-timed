@@ -15,15 +15,17 @@ copyright:           2020 Chris Upshaw
 build-type:          Simple
 extra-doc-files:     README.md
                      CHANGELOG.md
-tested-with:         GHC == 8.10.2
 
 source-repository head
   type:                git
   location:            https://github.com/Nolrai/fft-timed.git
 
 common common-options
-  build-depends:       base ^>= 4.14.0.0
+  build-depends:       base ^>= 4.13.0.0
                      , relude
+                     , array
+                     , vector
+                     , HCodecs
 
   mixins:              base hiding (Prelude)
                      , relude (Relude as Prelude)
@@ -59,6 +61,7 @@ executable fft-timed
   hs-source-dirs:      app
   main-is:             Main.hs
   build-depends:       fft-timed
+                     , deepseq
   ghc-options:         -threaded
                        -rtsopts
                        -with-rtsopts=-N
