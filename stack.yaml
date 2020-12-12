@@ -1,3 +1,7 @@
 resolver: lts-16.25
 
 extra-deps:
+- easyplot-1.0@sha256:3fec6ccf425b370ab668eb342bc4cd92777880653e27a982db7b225fd007cb2b,1936
+- console-program-0.4.2.3@sha256:02bf3de0af0073be13620de48f7847584f43774f53c864af0bfc70baadebe3a7,2136
+- ansi-terminal-0.9.1@sha256:48f53532d0f365ffa568c8cf0adc84c66f800a7d80d3329e4f04fa75392f4af1,3225
+- parsec-extra-0.2.0.0@sha256:47f16e5d00cb62db52d126903787dcccc94d500cfbcb54316f5db00f31da4fa2,735
