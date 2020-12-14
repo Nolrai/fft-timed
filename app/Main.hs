@@ -8,18 +8,17 @@ module Main
   )
 where
 
-import Codec.Wav as W
-import Control.DeepSeq
 import Data.Array.Unboxed as A
 import Data.Audio
-import Data.Complex (Complex ((:+)), Complex, magnitude)
+import Data.Complex (Complex, magnitude)
 import Data.Vector.Unboxed as V
-import FftTimed (naiveFT, projectName)
+import FftTimed (naiveFT, projectName, radix_2_dit)
 import FftTimed.IO (getInput, scaledVector)
 import System.IO (hPrint, openFile)
 
 -- import System.IO (IOMode (WriteMode), hPrint, openFile)
 
+main :: IO ()
 main =
   do
     putStrLn (projectName <> ":")
@@ -31,9 +30,16 @@ main =
     putStr "bounds: "
     print $ bounds sampleData
     let ft = body channelNumber sampleData
-    outHandle <- ft `deepseq` openFile outFileName WriteMode
+    outHandle <- ft `deepseq` openFile ("naive" <> outFileName) WriteMode
     (hPrint outHandle . magnitude) `V.mapM_` ft
-    putStrLn $ "Wrote File: " <> outFileName
+    putStrLn $ "Wrote File: " <> ("naive" <> outFileName)
+    let fastft = fastbody channelNumber sampleData
+    outHandle <- fastft `deepseq` openFile ("fast" <> outFileName) WriteMode
+    (hPrint outHandle . magnitude) `V.mapM_` fastft
+    putStrLn $ "Wrote File: " <> ("fast" <> outFileName)
 
 body :: Int -> UArray Int Int16 -> Vector (Complex Double)
-body channelNumber = naiveFT . V.take 1000 . scaledVector channelNumber
+body channelNumber = naiveFT . V.take 1024 . scaledVector channelNumber
+
+fastbody :: Int -> UArray Int Int16 -> Vector (Complex Double)
+fastbody channelNumber = radix_2_dit . V.take 1024 . scaledVector channelNumber

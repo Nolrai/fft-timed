@@ -29,5 +29,9 @@ reifiedFunctions =
   [ Reified
       "naiveFT"
       "Just multpiply and sum."
+      (naiveFT :: Vector (Complex Double) -> Vector (Complex Double)),
+    Reified
+      "radix_2_dit"
+      "basic recursive algorithem, only works for n a power of 2"
       (naiveFT :: Vector (Complex Double) -> Vector (Complex Double))
   ]

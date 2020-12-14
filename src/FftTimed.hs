@@ -1,39 +1,93 @@
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards #-}
+
 -- |
 -- Copyright: (c) 2020 Chris Upshaw
 -- SPDX-License-Identifier: MIT
 -- Maintainer: Chris Upshaw <chrisaupshaw@gmail.com>
 --
 -- See README for more info
-module FftTimed
-  ( projectName,
-    naiveFT,
-  )
-where
+module FftTimed where
+
+-- ( projectName,
+--   naiveFT,
+--   radix_2_dit,
+--   skipSplit,
+-- )
 
 import Data.Complex as C
-import Data.Vector.Unboxed as V
+-- import Data.Vector.Unboxed as V
+import Data.Vector as V
+import Debug.SimpleReflect
+import Debug.Trace
+import Prelude hiding (Show (..), fromList, length)
+import qualified Prelude
 
 projectName :: String
 projectName = "fft-timed"
 
-zetaVect :: Int -> Vector (Complex Double)
-zetaVect bigN = V.generate bigN $ \ix -> cis ((2 * pi * fromIntegral ix) / fromIntegral bigN)
+class Floating a => Zeta a where
+  rootOfUnity :: Int -> Int -> a
 
-naiveFT :: Vector (Complex Double) -> Vector (Complex Double)
+instance Zeta (Complex Double) where
+  rootOfUnity ix bigN = cis ((-2 * pi * fromIntegral ix) / fromIntegral bigN)
+
+instance Zeta Expr where
+  rootOfUnity = fun "rootOfUnity"
+
+zetaVect bigN = V.generate bigN $ \ix -> rootOfUnity ix bigN
+
+naiveFT :: Zeta a => Vector a -> Vector a
 naiveFT v = generate bigN $ \ix -> V.sum $ V.imap (mkEntry ix) v
   where
-    mkEntry ix ix' x = x * (zetaVect' ! (ix * ix' `rem` bigN))
+    mkEntry ix ix' x = x * (zetaVect' ! ((ix + 1) * ix' `rem` bigN))
     bigN = V.length v
     zetaVect' = zetaVect bigN
 
-radix_2_dit v = radix_2_dit_aux v (length v) 1
+radix_2_dit :: Zeta a => Vector a -> Vector a
+radix_2_dit v = radix_2_dit_aux (zetaVect (length v)) (fromVector v)
 
-radix_2_dit_aux :: Vector (Complex Double) -> Int -> Int -> Vector  (Complex Double)
-radix_2_dit_aux v 1 _ = v
-radix_2_dit_aux v size stride = generate size (\k -> (if k `mod` 2 = 0 then fst else snd) $ pairs ! (k `div` 2))
-  where
-    halfSize = size `div` 2
-    evens = radix_2_dit_aux v halfSize (stride * 2)
-    odds = radix_2_dit_aux (drop stride v) halfSize (stride * 2)
-    pairs = generate halfSize (\ k -> let t = evens ! k in (t + zetaVect' ! k, t - zetaVect' k))
-    zetaVect' = zetaVect size
+data SkipSlice a = SkipSlice {vec :: Vector a, offset :: Int, stride :: Int}
+
+instance (Prelude.Show a) => Prelude.Show (SkipSlice a) where
+  showsPrec d ss = Prelude.showsPrec d (toVector ss)
+
+--shows d ss = Prelude.show (toVector ss)
+
+(.!) :: SkipSlice a -> Int -> a
+SkipSlice {..} .! ix = vec ! (offset + stride * ix)
+
+ssLength :: SkipSlice a -> Int
+ssLength SkipSlice {..} = let x = V.length vec `div` stride in trace (Prelude.show (offset, stride)) x
+
+toVector :: SkipSlice a -> Vector a
+toVector ss@SkipSlice {..} = generate (ssLength ss) (ss .!)
+
+fromVector :: Vector a -> SkipSlice a
+fromVector vec = SkipSlice {vec = vec, offset = 0, stride = 1}
+
+data V2 a = V2 a a
+  deriving (Prelude.Show, Functor)
+
+skipSplit :: SkipSlice a -> V2 (SkipSlice a)
+skipSplit SkipSlice {..} =
+  let stride2 = stride * 2
+   in V2 SkipSlice {vec = vec, stride = stride2, offset = offset} SkipSlice {vec = vec, stride = stride2, offset = stride}
+
+radix_2_dit_aux :: Zeta a => Vector a -> SkipSlice a -> Vector a
+radix_2_dit_aux zetaVect' ss =
+  case ssLength ss of
+    1 -> fromList [ss .! 0]
+    size ->
+      let V2 evens odds = radix_2_dit_aux zetaVect' <$> skipSplit ss
+       in let twiddle k = odds ! k * (zetaVect' ! (k + 1))
+           in let low k = evens ! k + twiddle k
+               in let high k = evens ! k - twiddle k
+                   in let pairs = generate (size `div` 2) (\k -> (low k, high k))
+                       in uninterweave pairs
+
+uninterweave :: Vector (a, a) -> Vector a
+uninterweave pairs =
+  let size = V.length pairs
+   in generate (size * 2) (\k -> case pairs ! (k `mod` size) of (low, high) -> if k < size then low else high)
