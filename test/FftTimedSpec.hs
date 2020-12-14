@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -7,43 +9,58 @@ module FftTimedSpec
   )
 where
 
-import Codec.Wav as W
-import Data.Audio
 import Data.Complex (Complex (), magnitude)
-import Data.Vector.Unboxed as V
-import FftTimed (naiveFT, radix_2_dit)
-import FftTimed.IO (scaledVector)
+import Data.Vector as V
+import FftTimed (naiveFT, radix_2_dit, romanFftOnV)
 import Test.Hspec
-import Test.Hspec.QuickCheck
 import Test.QuickCheck
 
 spec :: Spec
-spec = beforeAll getV spec'
-
-getV :: IO (Vector (Complex Double))
-getV =
-  do
-    Audio {..} <- either die pure =<< W.importFile "/home/christopher/Downloads/flute-C4.wav"
-    pure $ scaledVector channelNumber sampleData
-
-spec' :: SpecWith (Vector (Complex Double))
-spec' = do
-  describe (show '
+spec = do
+  describe (show 'naiveFT)
+    $ it "doesn't change the size of the vector"
+    $ property (\v -> V.length (naiveFT v :: Vector (Complex Double)) `shouldBe` V.length v)
   describe (show 'radix_2_dit) $ do
-    fit "doesn't change the size of the vector 1" $
-      testPrefixes (\v size -> V.length (radix_2_dit (V.take size v)) `shouldBe` size)
-    it "is almost equal to naiveFT"
-      . testPrefixes
-      $ \v size -> do
-        let y = naiveFT (V.take size v)
-        let x = naiveFT (V.take size v)
-        let xSum = V.sum $ V.map magnitude x
-        let errorSum = V.sum $ V.zipWith (\a b -> magnitude (a - b)) x y
-        counterexample ("x : " <> show x <> "\ny : " <> show y) $
-          floor (errorSum * 100 / xSum) `shouldBe` 0
+    it "doesn't change the size of the vector" $
+      property (\v -> V.length (naiveFT v :: Vector (Complex Double)) `shouldBe` V.length v)
+    it "is almost equal to naiveFT" $ testAlmostEqualToNaiveFT 'radix_2_dit radix_2_dit
+  describe (show 'romanFftOnV) $ do
+    it "doesn't change the size of the vector" $
+      property (\v -> V.length (naiveFT v :: Vector (Complex Double)) `shouldBe` V.length v)
+    it "is almost equal to naiveFT" $ testAlmostEqualToNaiveFT 'romanFftOnV romanFftOnV
 
--- Test the property for varius small powers of 2
-testPrefixes p v = property $
-  \(Positive (Small (n :: Int))) ->
-    let size :: Int = 2 ^ n
-     in (size > 0 && size <= V.length v) ==> p v size
+testAlmostEqualToNaiveFT :: Show t => t -> (Vector (Complex Double) -> Vector (Complex Double)) -> Property
+testAlmostEqualToNaiveFT s f =
+  property $
+    \v -> do
+      let size = V.length v
+      let nv = naiveFT v
+      let fv = f v
+      let nSum = sqrt $ V.sum $ V.map magnitude nv
+      let errorSum = sqrt $ V.sum $ V.zipWith (\a b -> magnitude (a - b)) nv fv
+      counterexample
+        ( toString $
+            unlines
+              [ "input = " <> showT (size, V.take 10 v),
+                showT s <> ": " <> showT fv,
+                showT 'naiveFT <> ": " <> showT nv,
+                "errorSum: " <> showT errorSum,
+                "nSum: " <> showT nSum
+              ]
+        )
+        $ errorSum `shouldSatisfy` \x -> x < nSum / 100 || x < 0.0001
+
+showT :: Show a => a -> Text
+showT = show
+
+instance Arbitrary a => Arbitrary (Vector a) where
+  arbitrary =
+    do
+      (Positive (Small (n :: Int8))) <- arbitrary
+      let size :: Int = 2 ^ (n `rem` 5)
+      V.generate size . applyFun <$> arbitrary
+  shrink v =
+    let size = V.length v
+     in let newSize = size `div` 2
+         in let shrinkItems = V.fromList <$> Prelude.filter ((size ==) . Prelude.length) (shrink (V.toList v))
+             in V.take newSize v : V.drop newSize v : shrinkItems

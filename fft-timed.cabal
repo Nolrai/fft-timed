@@ -26,6 +26,7 @@ common common-options
                      , array
                      , vector
                      , HCodecs
+                     , simple-reflect
 
   mixins:              base hiding (Prelude)
                      , relude (Relude as Prelude)
@@ -61,6 +62,11 @@ library
   hs-source-dirs:      src
   exposed-modules:     FftTimed
                      , FftTimed.IO
+                     , FftTimed.RomanFft
+                     , FftTimed.RootOfUnity
+  build-depends:       containers
+                     , transformers
+                     , ghc
 
 executable fft-timed
   import:              common-options
@@ -77,7 +83,10 @@ test-suite fft-timed-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
+  other-modules:       FftTimedSpec
   build-depends:       fft-timed
+                     , hspec
+                     , QuickCheck
   ghc-options:         -threaded
                        -rtsopts
                        -with-rtsopts=-N
@@ -108,3 +117,4 @@ benchmark fft-timed-benchmark
   ghc-options:         -threaded
                        -rtsopts
                        -with-rtsopts=-N
+                       -Wno-missing-export-lists

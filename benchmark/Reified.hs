@@ -12,7 +12,7 @@ where
 import Control.DeepSeq
 import Criterion.Main (Benchmarkable, nf)
 import Data.Complex
-import Data.Vector.Unboxed as V
+import Data.Vector as V
 import FftTimed
 import System.Console.Argument
 import System.Console.Command
@@ -33,5 +33,9 @@ reifiedFunctions =
     Reified
       "radix_2_dit"
       "basic recursive algorithem, only works for n a power of 2"
-      (naiveFT :: Vector (Complex Double) -> Vector (Complex Double))
+      (radix_2_dit :: Vector (Complex Double) -> Vector (Complex Double)),
+    Reified
+      "romanFft"
+      "as described at https://ro-che.info/articles/2015-12-04-fft"
+      (romanFftOnV :: Vector (Complex Double) -> Vector (Complex Double))
   ]

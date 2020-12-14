@@ -11,7 +11,7 @@ where
 import Data.Array.Unboxed as A
 import Data.Audio
 import Data.Complex (Complex, magnitude)
-import Data.Vector.Unboxed as V
+import Data.Vector as V
 import FftTimed (naiveFT, projectName, radix_2_dit)
 import FftTimed.IO (getInput, scaledVector)
 import System.IO (hPrint, openFile)

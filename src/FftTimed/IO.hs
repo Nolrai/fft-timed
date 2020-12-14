@@ -6,7 +6,7 @@ import Codec.Wav as W
 import Data.Array.Unboxed as A
 import Data.Audio
 import Data.Complex
-import Data.Vector.Unboxed as V
+import Data.Vector as V
 import System.Environment
 
 getInput :: IO (Either String (Audio Int16, FilePath))

@@ -16,16 +16,23 @@ module FftTimed where
 --   skipSplit,
 -- )
 
-import Data.Complex as C
 -- import Data.Vector.Unboxed as V
+
+-- import Debug.Trace
+
+import Data.Complex as C
 import Data.Vector as V
-import Debug.SimpleReflect
-import Debug.Trace
+import Debug.SimpleReflect hiding (k, v, x)
+import FftTimed.RomanFft (romanFft)
+import qualified Text.Show as T
 import Prelude hiding (Show (..), fromList, length)
-import qualified Prelude
+import qualified Prelude (Show {-fromList,-} (..), length)
 
 projectName :: String
 projectName = "fft-timed"
+
+romanFftOnV :: Vector (Complex Double) -> Vector (Complex Double)
+romanFftOnV = V.fromList . fst . romanFft . V.toList
 
 class Floating a => Zeta a where
   rootOfUnity :: Int -> Int -> a
@@ -41,7 +48,7 @@ zetaVect bigN = V.generate bigN $ \ix -> rootOfUnity ix bigN
 naiveFT :: Zeta a => Vector a -> Vector a
 naiveFT v = generate bigN $ \ix -> V.sum $ V.imap (mkEntry ix) v
   where
-    mkEntry ix ix' x = x * (zetaVect' ! ((ix + 1) * ix' `rem` bigN))
+    mkEntry ix ix' x = x * (zetaVect' ! ((ix) * ix' `rem` bigN))
     bigN = V.length v
     zetaVect' = zetaVect bigN
 
@@ -50,16 +57,14 @@ radix_2_dit v = radix_2_dit_aux (zetaVect (length v)) (fromVector v)
 
 data SkipSlice a = SkipSlice {vec :: Vector a, offset :: Int, stride :: Int}
 
-instance (Prelude.Show a) => Prelude.Show (SkipSlice a) where
-  showsPrec d ss = Prelude.showsPrec d (toVector ss)
-
---shows d ss = Prelude.show (toVector ss)
+instance (T.Show a) => T.Show (SkipSlice a) where
+  showsPrec d ss = T.showsPrec d (toVector ss)
 
 (.!) :: SkipSlice a -> Int -> a
 SkipSlice {..} .! ix = vec ! (offset + stride * ix)
 
 ssLength :: SkipSlice a -> Int
-ssLength SkipSlice {..} = let x = V.length vec `div` stride in trace (Prelude.show (offset, stride)) x
+ssLength SkipSlice {..} = V.length vec `div` stride
 
 toVector :: SkipSlice a -> Vector a
 toVector ss@SkipSlice {..} = generate (ssLength ss) (ss .!)
@@ -82,8 +87,8 @@ radix_2_dit_aux zetaVect' ss =
     size ->
       let V2 evens odds = radix_2_dit_aux zetaVect' <$> skipSplit ss
        in let twiddle k = odds ! k * (zetaVect' ! (k + 1))
-           in let low k = evens ! k + twiddle k
-               in let high k = evens ! k - twiddle k
+           in let low k = evens ! k - twiddle k
+               in let high k = evens ! k + twiddle k
                    in let pairs = generate (size `div` 2) (\k -> (low k, high k))
                        in uninterweave pairs
 
