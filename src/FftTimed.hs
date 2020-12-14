@@ -48,7 +48,7 @@ zetaVect bigN = V.generate bigN $ \ix -> rootOfUnity ix bigN
 naiveFT :: Zeta a => Vector a -> Vector a
 naiveFT v = generate bigN $ \ix -> V.sum $ V.imap (mkEntry ix) v
   where
-    mkEntry ix ix' x = x * (zetaVect' ! ((ix) * ix' `rem` bigN))
+    mkEntry ix ix' x = x * (zetaVect' ! (ix * ix' `rem` bigN))
     bigN = V.length v
     zetaVect' = zetaVect bigN
 

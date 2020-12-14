@@ -3,8 +3,8 @@ module FftTimed.RootOfUnity
   ( U, -- abstract
     mkU,
     toComplex,
-    u_pow,
-    u_sqr,
+    uPow,
+    uSqr,
   )
 where
 
@@ -23,9 +23,9 @@ mkU :: Rational -> U
 mkU q = U (q - realToFrac (floor q))
 
 -- | Raise a U number to a power
-u_pow :: U -> Integer -> U
-u_pow (U q) p = mkU (fromIntegral p * q)
+uPow :: U -> Integer -> U
+uPow (U q) p = mkU (fromIntegral p * q)
 
 -- | Square a U number
-u_sqr :: U -> U
-u_sqr x = u_pow x 2
+uSqr :: U -> U
+uSqr x = uPow x 2
