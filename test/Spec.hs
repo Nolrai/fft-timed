@@ -1,7 +1,1 @@
-module Main (main) where
-
-import FftTimed (projectName)
-
-
-main :: IO ()
-main = putStrLn ("Tests for " ++ projectName)
+{-# OPTIONS_GHC -F -pgmF hspec-discover #-}
