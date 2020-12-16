@@ -10,26 +10,25 @@ module FftTimedSpec
 where
 
 import Data.Complex (Complex (), magnitude)
-import Data.Vector as V
-import FftTimed (naiveFT, radix_2_dit, romanFftOnV)
+import Data.Vector.Unboxed as V
+import FftTimed (dNaiveFT, naiveFT, radix_2_dit, romanFftDOnV, romanFftOnV)
+import FftTimed.Reified
+import Relude
 import Test.Hspec
 import Test.QuickCheck
 
 spec :: Spec
-spec = do
-  describe (show 'naiveFT)
-    $ it "doesn't change the size of the vector"
-    $ property (\v -> V.length (naiveFT v :: Vector (Complex Double)) `shouldBe` V.length v)
-  describe (show 'radix_2_dit) $ do
-    it "doesn't change the size of the vector" $
-      property (\v -> V.length (naiveFT v :: Vector (Complex Double)) `shouldBe` V.length v)
-    it "is almost equal to naiveFT" $ testAlmostEqualToNaiveFT 'radix_2_dit radix_2_dit
-  describe (show 'romanFftOnV) $ do
-    it "doesn't change the size of the vector" $
-      property (\v -> V.length (naiveFT v :: Vector (Complex Double)) `shouldBe` V.length v)
-    it "is almost equal to naiveFT" $ testAlmostEqualToNaiveFT 'romanFftOnV romanFftOnV
+spec = block `Relude.mapM_` reifiedFunctions
 
-testAlmostEqualToNaiveFT :: Show t => t -> (Vector (Complex Double) -> Vector (Complex Double)) -> Property
+block :: Reified -> Spec
+block Reified {..} =
+  describe name $ do
+    it description $ property (`shouldBe` ())
+    it "doesn't change the size of the vector" $
+      property (\v -> V.length (func v :: Vector (Complex Double)) `shouldBe` V.length v)
+    when (name /= "naiveFT") $ it "is almost equal to naiveFT" $ testAlmostEqualToNaiveFT name func
+
+testAlmostEqualToNaiveFT :: ToText t => t -> (Vector (Complex Double) -> Vector (Complex Double)) -> Property
 testAlmostEqualToNaiveFT s f =
   property $
     \v -> do
@@ -37,23 +36,27 @@ testAlmostEqualToNaiveFT s f =
       let nv = naiveFT v
       let fv = f v
       let nSum = sqrt $ V.sum $ V.map magnitude nv
-      let errorSum = sqrt $ V.sum $ V.zipWith (\a b -> magnitude (a - b)) nv fv
+      let errorVec = V.zipWith (\a b -> magnitude (a - b)) nv fv
+      let errorSum = sqrt $ V.sum errorVec
       counterexample
         ( toString $
             unlines
               [ "input = " <> showT (size, V.take 10 v),
-                showT s <> ": " <> showT fv,
+                toText s <> ": " <> showT fv,
                 showT 'naiveFT <> ": " <> showT nv,
+                "errorVec: " <> showT errorVec,
                 "errorSum: " <> showT errorSum,
                 "nSum: " <> showT nSum
               ]
         )
         $ errorSum `shouldSatisfy` \x -> x < nSum / 100 || x < 0.0001
 
+-- force the result to be a Text
 showT :: Show a => a -> Text
 showT = show
 
-instance Arbitrary a => Arbitrary (Vector a) where
+-- this instance only produces vectors that have a length of a power of two.
+instance (Unbox a, Arbitrary a) => Arbitrary (Vector a) where
   arbitrary =
     do
       (Positive (Small (n :: Int8))) <- arbitrary
@@ -62,5 +65,5 @@ instance Arbitrary a => Arbitrary (Vector a) where
   shrink v =
     let size = V.length v
      in let newSize = size `div` 2
-         in let shrinkItems = V.fromList <$> Prelude.filter ((size ==) . Prelude.length) (shrink (V.toList v))
+         in let shrinkItems = V.fromList <$> Relude.filter ((size ==) . Relude.length) (shrink (V.toList v))
              in V.take newSize v : V.drop newSize v : shrinkItems

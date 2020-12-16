@@ -11,9 +11,10 @@ where
 import Data.Array.Unboxed as A
 import Data.Audio
 import Data.Complex (Complex, magnitude)
-import Data.Vector as V
-import FftTimed (naiveFT, projectName, radix_2_dit)
+import Data.Vector.Unboxed as V
+import FftTimed (dNaiveFT, projectName, romanFftDOnV)
 import FftTimed.IO (getInput, scaledVector)
+import Relude
 import System.IO (hPrint, openFile)
 
 -- import System.IO (IOMode (WriteMode), hPrint, openFile)
@@ -39,7 +40,7 @@ main =
     putStrLn $ "Wrote File: " <> ("fast" <> outFileName)
 
 body :: Int -> UArray Int Int16 -> Vector (Complex Double)
-body channelNumber = naiveFT . V.take 1024 . scaledVector channelNumber
+body channelNumber = dNaiveFT . V.take 1024 . scaledVector channelNumber
 
 fastbody :: Int -> UArray Int Int16 -> Vector (Complex Double)
-fastbody channelNumber = radix_2_dit . V.take 1024 . scaledVector channelNumber
+fastbody channelNumber = romanFftDOnV . V.take 1024 . scaledVector channelNumber

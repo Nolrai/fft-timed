@@ -15,12 +15,12 @@ import Criterion.Types
 import Data.Audio
 import Data.Complex (Complex ((:+)))
 import qualified Data.List as List
-import Data.Vector.Unboxed as V
 import FftTimed.IO (scaledVector)
 import Options.Applicative
 import Reified (Reified (..), reifiedFunctions)
 import System.IO (hClose)
 import System.IO.Temp
+import Vector.Unboxed.Unboxed as V
 
 opts :: ParserInfo Mode
 opts =
